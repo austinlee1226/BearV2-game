@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>熊熊記憶王 - 專業配色版</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body, html { width: 100%; height: 100%; background-color: #1a1a2e; display: flex; justify-content: center; align-items: center; overflow: hidden; font-family: 'Arial Black', -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+        
+        #game-outer { 
+            width: 100%; height: 100%; max-width: 450px; max-height: 900px; 
+            position: relative; display: flex; flex-direction: column; 
+            /* 修正：更換為深藍色漸層背景 */
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        
+        /* 統一面板樣式 */
+        .modal-panel {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 85%; background: rgba(15, 52, 96, 0.95); border: 3px solid #44cc00; border-radius: 25px;
+            padding: 40px 20px; text-align: center; color: white; z-index: 1000;
+            box-shadow: 0 0 30px rgba(0,255,0,0.2);
+            backdrop-filter: blur(10px); /* 磨砂玻璃效果 */
+        }
+        .modal-panel h2 { color: #44cc00; font-size: 36px; margin-bottom: 20px; letter-spacing: 2px; text-shadow: 0 0 10px rgba(68,204,0,0.5); }
+        .modal-panel p { font-size: 18px; margin: 10px 0; color: #e0e0e0; }
+        
+        .menu-btn {
+            margin-top: 25px; padding: 12px 40px; font-size: 20px; font-family: inherit;
+            background: #44cc00; border: none; border-radius: 12px; color: white; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(68,204,0,0.3);
+        }
+        .menu-btn:active { transform: scale(0.95); }
+
+        #difficulty-nfo { position: absolute; top: 35px; left: 50%; transform: translateX(-50%); color: #44cc00; font-size: 11px; font-weight: bold; z-index: 20; text-align: center; }
+        .timer-container { position: absolute; top: 8px; left: 10%; width: 80%; height: 14px; background: rgba(255,255,255,0.1); border: 2px solid #44cc00; border-radius: 20px; overflow: hidden; z-index: 999; }
+        #timer-bar { width: 100%; height: 100%; background: #44cc00; transition: width 0.1s linear; box-shadow: 0 0 10px #44cc00; }
+        
+        .header { flex: 0 0 12%; display: flex; justify-content: space-between; align-items: center; padding: 50px 25px 10px 25px; color: #fff; z-index: 10; }
+        .stage { flex: 0 0 43%; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; position: relative; }
+        .character { font-size: 80px; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+        
+        #start-text, #feedback-text, #timeout-text { position: absolute; left: 50%; transform: translate(-50%, -50%); z-index: 25; display: none; white-space: nowrap; pointer-events: none; }
+        #start-text { top: 50%; font-size: 80px; color: #ffcc00; text-shadow: 0 0 20px rgba(255,204,0,0.5); animation: pulse 1s infinite alternate; }
+        #feedback-text { top: 60%; font-size: 70px; color: #44cc00; text-shadow: 0 0 20px rgba(68,204,0,0.5); }
+        #timeout-text { top: 60%; font-size: 60px; color: #ff4d4d; text-shadow: 0 0 20px rgba(255,77,77,0.5); animation: popIn 0.3s forwards; }
+
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0); opacity: 0; } 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+        @keyframes pulse { from { transform: translate(-50%, -50%) scale(1); } to { transform: translate(-50%, -50%) scale(1.1); } }
+
+        #target-item { width: 95px; height: 95px; background: #fff; border: 4px solid #ff6699; border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 55px; box-shadow: 0 0 20px rgba(255,102,153,0.4); color: #333; }
+        .divider { height: 10px; background-color: #44cc00; box-shadow: 0 0 15px #44cc00; z-index: 10; }
+        .grid-container { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 15px; padding: 25px; z-index: 10; }
+        .card { perspective: 1000px; width: 100%; height: 100%; }
+        .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-style: preserve-3d; }
+        .card.is-flipped .card-inner { transform: rotateY(180deg); }
+        .card-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; font-size: 42px; border-radius: 15px; border: 2px solid rgba(255,255,255,0.1); color: #333; }
+        .card-back { background: #2a2a40; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
+        .card-front { transform: rotateY(180deg); background-color: #ffffff; }
+        
+        .card.correct .card-front { border: 5px solid #44cc00; background-color: #e8f5e9; box-shadow: 0 0 20px rgba(68,204,0,0.4); }
+        .card.wrong .card-front, .card.timeout-ans .card-front { border: 5px solid #ff4d4d; background-color: #ffebee; box-shadow: 0 0 20px rgba(255,77,77,0.4); }
+    </style>
+</head>
+<body>
+
+<div id="game-outer">
+    <div id="start-panel" class="modal-panel">
+        <h2>熊熊記憶王</h2>
+        <p>記住數字位置，挑戰極限反應</p>
+        <button id="start-game-btn" class="menu-btn">進入訓練</button>
+    </div>
+
+    <div id="game-over-panel" class="modal-panel" style="display: none; border-color: #ff4d4d; box-shadow: 0 0 30px rgba(255,0,0,0.2);">
+        <h2 style="color: #ff4d4d; text-shadow: 0 0 10px rgba(255,77,77,0.5);">TRAINING OVER</h2>
+        <p>本次得分：<span id="final-score" style="color:#ffcc00; font-size:24px;">0</span></p>
+        <p>歷史最高：<span id="top-score">0</span></p>
+        <button id="retry-btn" class="menu-btn" style="background: #ff4d4d;">重新挑戰</button>
+    </div>
+
+    <div id="difficulty-nfo">
+        ROUND: <span id="round-val">1</span> | MEM: <span id="mem-val">5.0</span>s | DECISION: <span id="dec-val">5.0</span>s
+    </div>
+    <div class="timer-container"><div id="timer-bar"></div></div>
+    <div class="header">
+        <div style="text-align:center"><small>TOP</small><br><span id="top-val-ui">0000</span></div>
+        <div id="hearts">❤️❤️❤️</div>
+        <div style="text-align:center"><small>SCORE</small><br><span id="score-val">0000</span></div>
+    </div>
+    <div class="stage">
+        <div id="start-text">START</div>
+        <div id="feedback-text">GOOD!</div>
+        <div id="timeout-text">TIME OUT</div>
+        <div class="character">🐻</div>
+        <div id="target-item">?</div>
+    </div>
+    <div class="divider"></div>
+    <div id="card-grid" class="grid-container"></div>
+</div>
+
+<script>
+    const CONFIG = {
+        REVEAL_TIME: 3000,
+        RESET_TIME: 3000,
+        INIT_MEM_TIME: 5000,
+        MIN_MEM_TIME: 1000,
+        MEM_STEP: 500,
+        INIT_DEC_TIME: 5.0,
+        MIN_DEC_TIME: 1.0,
+        MAX_LIVES: 3,
+        POOL: ['1','2','3','4','5','6','7','8','9']
+    };
+
+    let state = {
+        memTime: CONFIG.INIT_MEM_TIME,
+        decTime: CONFIG.INIT_DEC_TIME,
+        streak: 0,
+        round: 1,
+        score: 0,
+        lives: CONFIG.MAX_LIVES,
+        currentTarget: "",
+        isWaiting: false,
+        gridItems: [],
+        topScore: parseInt(localStorage.getItem('bearTopScore')) || 0
+    };
+
+    const dom = {
+        grid: document.getElementById('card-grid'),
+        target: document.getElementById('target-item'),
+        startTxt: document.getElementById('start-text'),
+        feedbackTxt: document.getElementById('feedback-text'),
+        timeoutTxt: document.getElementById('timeout-text'),
+        score: document.getElementById('score-val'),
+        mem: document.getElementById('mem-val'),
+        dec: document.getElementById('dec-val'),
+        round: document.getElementById('round-val'),
+        timerBar: document.getElementById('timer-bar'),
+        hearts: document.getElementById('hearts'),
+        topValUi: document.getElementById('top-val-ui'),
+        startPanel: document.getElementById('start-panel'),
+        gameOverPanel: document.getElementById('game-over-panel'),
+        finalScore: document.getElementById('final-score'),
+        topScore: document.getElementById('top-score'),
+        retryBtn: document.getElementById('retry-btn'),
+        startGameBtn: document.getElementById('start-game-btn'),
+        cards: []
+    };
+
+    function initGrid() {
+        dom.grid.innerHTML = '';
+        dom.cards = [];
+        for (let i = 0; i < 9; i++) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `<div class="card-inner"><div class="card-face card-back"></div><div class="card-face card-front"></div></div>`;
+            const handleInput = (e) => { e.preventDefault(); handleCardClick(i, card); };
+            card.addEventListener('mousedown', handleInput);
+            card.addEventListener('touchstart', handleInput, {passive: false});
+            dom.grid.appendChild(card);
+            dom.cards.push(card);
+        }
+        dom.topValUi.textContent = state.topScore.toString().padStart(4, '0');
+    }
+
+    async function nextRound() {
+        state.isWaiting = false;
+        stopTimer();
+        dom.timerBar.style.width = "100%";
+        dom.timerBar.style.background = "#44cc00";
+        dom.target.textContent = "?";
+        dom.target.style.display = "flex";
+        dom.feedbackTxt.style.display = "none";
+        dom.timeoutTxt.style.display = "none";
+        dom.mem.textContent = (state.memTime / 1000).toFixed(1);
+        dom.dec.textContent = state.decTime.toFixed(1);
+        dom.round.textContent = state.round;
+        dom.cards.forEach(c => c.className = 'card');
+        dom.startTxt.style.display = "block";
+        await new Promise(r => setTimeout(r, CONFIG.RESET_TIME)); 
+        dom.startTxt.style.display = "none"; 
+        state.gridItems = [...CONFIG.POOL].sort(() => 0.5 - Math.random());
+        state.gridItems.forEach((num, i) => {
+            dom.cards[i].querySelector('.card-front').textContent = num;
+            dom.cards[i].classList.add('is-flipped');
+        });
+        await new Promise(r => setTimeout(r, state.memTime));
+        dom.cards.forEach(c => c.classList.remove('is-flipped'));
+        await new Promise(r => setTimeout(r, 400)); 
+        state.currentTarget = state.gridItems[Math.floor(Math.random() * 9)];
+        dom.target.textContent = state.currentTarget;
+        startTimer(); 
+        state.isWaiting = true;
+    }
+
+    let timerInterval = null;
+    function startTimer() {
+        let start = Date.now();
+        const limit = state.decTime * 1000;
+        timerInterval = setInterval(() => {
+            let elapsed = Date.now() - start;
+            let remaining = Math.max(0, limit - elapsed);
+            let pct = (remaining / limit) * 100;
+            dom.timerBar.style.width = pct + "%";
+            if (pct < 40) dom.timerBar.style.background = "#ff4d4d";
+            if (remaining <= 0) handleResult(null);
+        }, 50);
+    }
+
+    function stopTimer() { clearInterval(timerInterval); }
+
+    function handleCardClick(index, card) {
+        if (!state.isWaiting || card.classList.contains('is-flipped')) return;
+        handleResult(index);
+    }
+
+    async function handleResult(index) {
+        state.isWaiting = false;
+        stopTimer();
+        if (index === null) {
+            state.lives--;
+            dom.target.style.display = "none";
+            dom.timeoutTxt.style.display = "block";
+            dom.cards[state.gridItems.indexOf(state.currentTarget)].classList.add('timeout-ans');
+            state.streak = Math.max(0, state.streak - 1);
+        } else {
+            if (state.gridItems[index] === state.currentTarget) {
+                state.score += 10;
+                dom.score.textContent = state.score.toString().padStart(4, '0');
+                dom.cards[index].classList.add('correct');
+                dom.target.style.display = "none";
+                dom.feedbackTxt.style.display = "block";
+                state.memTime = Math.max(CONFIG.MIN_MEM_TIME, state.memTime - CONFIG.MEM_STEP);
+                state.streak++;
+            } else {
+                state.lives--;
+                dom.cards[index].classList.add('wrong');
+                state.streak = Math.max(0, state.streak - 1);
+            }
+        }
+        state.decTime = Math.max(CONFIG.MIN_DEC_TIME, CONFIG.INIT_DEC_TIME - Math.floor(state.streak / 3));
+        updateHearts();
+        dom.cards.forEach(c => c.classList.add('is-flipped'));
+        await new Promise(r => setTimeout(r, CONFIG.REVEAL_TIME));
+        if (state.lives <= 0) showGameOver();
+        else { state.round++; nextRound(); }
+    }
+
+    function showGameOver() {
+        if (state.score > state.topScore) {
+            state.topScore = state.score;
+            localStorage.setItem('bearTopScore', state.topScore);
+        }
+        dom.finalScore.textContent = state.score;
+        dom.topScore.textContent = state.topScore;
+        dom.gameOverPanel.style.display = "block";
+    }
+
+    dom.startGameBtn.addEventListener('click', () => { dom.startPanel.style.display = "none"; nextRound(); });
+    dom.retryBtn.addEventListener('click', () => { location.reload(); });
+    function updateHearts() { dom.hearts.textContent = '❤️'.repeat(state.lives) + '🖤'.repeat(CONFIG.MAX_LIVES - state.lives); }
+    initGrid();
+</script>
+</body>
+</html>
